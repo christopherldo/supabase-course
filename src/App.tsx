@@ -30,7 +30,7 @@ function App() {
       {session ? (
         <>
           <button onClick={logout}>Log Out</button>
-          <TaskManager />
+          <TaskManager userId={session.user.id}/>
         </>
       ) : (
         <Auth />

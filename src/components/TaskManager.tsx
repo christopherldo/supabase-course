@@ -8,9 +8,12 @@ import {
 } from "../services/tasks";
 import { TaskForm } from "./TaskForm";
 import { TaskList } from "./TaskList";
-import supabase from "../lib/supabase-client";
 
-export const TaskManager = () => {
+interface TaskManagerProps {
+  userId: string;
+}
+
+export const TaskManager = ({ userId }: TaskManagerProps) => {
   const [currentTask, setCurrentTask] = useState<
     Omit<Task, "created_at" | "user_id">
   >({
@@ -44,7 +47,7 @@ export const TaskManager = () => {
     } else {
       result = await createTask({
         ...currentTask,
-        user_id: (await supabase.auth.getSession()).data.session?.user.id,
+        user_id: userId,
       } as Task);
     }
 
