@@ -8,6 +8,7 @@ import {
 } from "../services/tasks";
 import { TaskForm } from "./TaskForm";
 import { TaskList } from "./TaskList";
+import supabase from "../lib/supabase-client";
 
 interface TaskManagerProps {
   userId: string;
@@ -38,6 +39,30 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     fetchTasks();
   }, [fetchTasks]);
 
+  useEffect(() => {
+    const channel = supabase.channel("tasks-insert-channel");
+
+    channel
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "tasks" },
+        (payload) => {
+          const data = payload.new as Task;
+
+          setTasks((prev) => [...prev, data]);
+        },
+      )
+      .subscribe((status, err) => {
+        console.log(status);
+
+        if (err) console.error(err);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -52,7 +77,6 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     }
 
     if (result && !result.error) {
-      await fetchTasks();
       resetCurrentTask();
     }
   };
