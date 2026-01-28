@@ -24,20 +24,33 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isEditingTask, setIsEditingTask] = useState(false);
 
-  const fetchTasks = useCallback(async () => {
-    const { error, data } = await readTasks();
+  const handleRealtimeDelete = useCallback((oldTask: Task) => {
+    setTasks((prev) => prev.filter((task) => task.id !== oldTask.id));
+  }, []);
 
-    if (error) {
-      console.error(error);
-    } else if (data) {
-      setTasks(data);
-    }
+  const handleRealtimeUpdate = useCallback((newTask: Task) => {
+    setTasks((prev) =>
+      prev.map((task) => (task.id === newTask.id ? newTask : task)),
+    );
+  }, []);
+
+  const handleRealtimeInsert = useCallback((newTask: Task) => {
+    setTasks((prev) => [...prev, newTask]);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    const fetchTasks = async () => {
+      const { error, data } = await readTasks();
+
+      if (error) {
+        console.error(error);
+      } else if (data) {
+        setTasks(data);
+      }
+    };
+
     fetchTasks();
-  }, [fetchTasks]);
+  }, []);
 
   useEffect(() => {
     const channel = supabase.channel("tasks-insert-channel");
@@ -45,11 +58,23 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     channel
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "tasks" },
+        { event: "*", schema: "public", table: "tasks" },
         (payload) => {
-          const data = payload.new as Task;
+          console.log(payload);
 
-          setTasks((prev) => [...prev, data]);
+          const { new: newTask, old: oldTask, eventType } = payload;
+
+          switch (eventType) {
+            case "INSERT":
+              handleRealtimeInsert(newTask as Task);
+              break;
+            case "DELETE":
+              handleRealtimeDelete(oldTask as Task);
+              break;
+            case "UPDATE":
+              handleRealtimeUpdate(newTask as Task);
+              break;
+          }
         },
       )
       .subscribe((status, err) => {
@@ -61,7 +86,7 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [handleRealtimeInsert, handleRealtimeDelete, handleRealtimeUpdate]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -98,11 +123,7 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
   const handleClickOnDeleteTask = async (id?: string) => {
     if (!id) return;
 
-    const { error } = await deleteTask(id);
-
-    if (!error) {
-      await fetchTasks();
-    }
+    await deleteTask(id);
   };
 
   const resetCurrentTask = (task?: Task) => {
