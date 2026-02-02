@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import type { Task } from "../types/task";
 import {
   createTask,
@@ -9,20 +9,20 @@ import {
 import { TaskForm } from "./TaskForm";
 import { TaskList } from "./TaskList";
 import supabase from "../lib/supabase-client";
+import { uploadImage } from "../services/images";
 
 interface TaskManagerProps {
   userId: string;
 }
 
 export const TaskManager = ({ userId }: TaskManagerProps) => {
-  const [currentTask, setCurrentTask] = useState<
-    Omit<Task, "created_at" | "user_id">
-  >({
+  const [currentTask, setCurrentTask] = useState<Task>({
     title: "",
     description: "",
   });
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isEditingTask, setIsEditingTask] = useState(false);
+  const [taskImage, setTaskImage] = useState<File | null>(null);
 
   const handleRealtimeDelete = useCallback((oldTask: Task) => {
     setTasks((prev) => prev.filter((task) => task.id !== oldTask.id));
@@ -37,6 +37,68 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
   const handleRealtimeInsert = useCallback((newTask: Task) => {
     setTasks((prev) => [...prev, newTask]);
   }, []);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setTaskImage(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    let imageURL: string | undefined;
+
+    if (taskImage) {
+      imageURL = await uploadImage(taskImage);
+    }
+
+    let result;
+
+    if (isEditingTask && currentTask.id) {
+      result = await updateTask(currentTask);
+    } else {
+      result = await createTask({
+        ...currentTask,
+        user_id: userId,
+        image_url: imageURL,
+      } as Task);
+    }
+
+    if (result && !result.error) {
+      resetCurrentTask();
+    }
+  };
+
+  const handleClickOnEditTask = (task: Task) => {
+    setIsEditingTask(true);
+    setCurrentTask(task);
+  };
+
+  const handleClickOnCancelEditButton = (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ) => {
+    e.preventDefault();
+
+    setIsEditingTask(false);
+    resetCurrentTask();
+  };
+
+  const handleClickOnDeleteTask = async (id?: string) => {
+    if (!id) return;
+
+    await deleteTask(id);
+  };
+
+  const resetCurrentTask = (task?: Task) => {
+    if (!task) {
+      setCurrentTask({ title: "", description: "" });
+      setTaskImage(null);
+      return;
+    }
+
+    setCurrentTask(task);
+  };
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -88,53 +150,6 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     };
   }, [handleRealtimeInsert, handleRealtimeDelete, handleRealtimeUpdate]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    let result;
-    if (isEditingTask && currentTask.id) {
-      result = await updateTask(currentTask as Task);
-    } else {
-      result = await createTask({
-        ...currentTask,
-        user_id: userId,
-      } as Task);
-    }
-
-    if (result && !result.error) {
-      resetCurrentTask();
-    }
-  };
-
-  const handleClickOnEditTask = (task: Task) => {
-    setIsEditingTask(true);
-    setCurrentTask(task);
-  };
-
-  const handleClickOnCancelEditButton = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
-    e.preventDefault();
-
-    setIsEditingTask(false);
-    resetCurrentTask();
-  };
-
-  const handleClickOnDeleteTask = async (id?: string) => {
-    if (!id) return;
-
-    await deleteTask(id);
-  };
-
-  const resetCurrentTask = (task?: Task) => {
-    if (!task) {
-      setCurrentTask({ title: "", description: "" });
-      return;
-    }
-
-    setCurrentTask(task);
-  };
-
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1rem" }}>
       <h2>Task Manager CRUD</h2>
@@ -145,6 +160,7 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
         handleSubmit={handleSubmit}
         isEditingTask={isEditingTask}
         setCurrentTask={setCurrentTask}
+        handleFileChange={handleFileChange}
       />
 
       <TaskList

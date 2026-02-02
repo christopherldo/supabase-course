@@ -1,12 +1,14 @@
+import type { ChangeEventHandler } from "react";
 import type { Task } from "../types/task";
 
 interface TaskFormProps {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   setCurrentTask: (value: Task) => void;
   currentTask: Task;
+  handleFileChange: ChangeEventHandler<HTMLInputElement>;
   isEditingTask: boolean;
   handleClickOnCancelEditButton: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ) => void;
 }
 
@@ -14,6 +16,7 @@ export const TaskForm = ({
   handleSubmit,
   setCurrentTask,
   currentTask,
+  handleFileChange,
   isEditingTask,
   handleClickOnCancelEditButton,
 }: TaskFormProps) => {
@@ -36,6 +39,9 @@ export const TaskForm = ({
         value={currentTask.description}
         style={{ width: "100%", marginBottom: "0.5rem", padding: "0.5rem" }}
       />
+
+      <input type="file" accept="image/*" onChange={handleFileChange} />
+
       {isEditingTask && (
         <button
           type="reset"

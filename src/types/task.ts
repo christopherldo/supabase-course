@@ -4,4 +4,5 @@ export interface Task {
   description: string;
   created_at?: string;
   user_id?: string;
+  image_url?: string;
 }
