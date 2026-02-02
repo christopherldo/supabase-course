@@ -56,7 +56,13 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     let result;
 
     if (isEditingTask && currentTask.id) {
-      result = await updateTask(currentTask);
+      const updatedTask = { ...currentTask };
+
+      if (imageURL) {
+        updatedTask.image_url = imageURL;
+      }
+      
+      result = await updateTask(updatedTask);
     } else {
       result = await createTask({
         ...currentTask,

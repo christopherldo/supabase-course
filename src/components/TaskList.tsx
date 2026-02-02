@@ -26,7 +26,13 @@ export const TaskList = ({
           <div>
             <h3>{task.title}</h3>
             <p>{task.description}</p>
-            <img src={task.image_url} alt={task.title} style={{ height: 70 }} />
+            {task.image_url && (
+              <img
+                src={task.image_url}
+                alt={task.title}
+                style={{ height: 70 }}
+              />
+            )}
             <div>
               <button
                 style={{ padding: "0.5rem 1rem", marginRight: "0.5rem" }}

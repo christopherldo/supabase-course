@@ -36,6 +36,7 @@ export const updateTask = async (data: Task) => {
     .update({
       title: data.title,
       description: data.description,
+      image_url: data.image_url,
     })
     .eq("id", data.id)
     .select()
